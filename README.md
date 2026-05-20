@@ -8,7 +8,7 @@
 
 [![License](https://img.shields.io/github/license/aprixlabs/alir-io)](https://github.com/aprixlabs/alir-io/blob/main/LICENSE)
 [![Latest Release](https://img.shields.io/github/v/release/aprixlabs/alir-io)](https://github.com/aprixlabs/alir-io/releases)
-[![Downloads](https://img.shields.io/github/downloads/aprixlabs/alir-io/total)](https://github.com/aprixlabs/alir-io/releases)
+[![Downloads](https://img.shields.io/github/downloads/aprixlabs/alir-io/total.svg?color=brightgreen&label=Downloads&v=1)](https://github.com/aprixlabs/alir-io/releases)
 
 </div>
 
