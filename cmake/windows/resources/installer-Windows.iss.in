@@ -1,0 +1,73 @@
+; IMPORTANT : This file is ONLY used when building with Inno Setup
+
+#define MyAppName "@CMAKE_PROJECT_NAME@"
+#define MyAppVersion "@CMAKE_PROJECT_VERSION@"
+#define MyAppPublisher "@PLUGIN_AUTHOR@"
+#define MyAppURL "@PLUGIN_WEBSITE@"
+#define MyAppId "@WINDOWS_APP_UUID@"
+
+[Setup]
+; NOTE: The value of AppId uniquely identifies this application.
+; Do not use the same AppId value in installers for other applications.
+AppId={{{#MyAppId}}
+AppName={#MyAppName}
+AppVerName={#MyAppName}
+AppVersion={#MyAppVersion}
+AppPublisher={#MyAppPublisher}
+AppPublisherURL={#MyAppURL}
+AppSupportURL={#MyAppURL}
+AppUpdatesURL={#MyAppURL}
+DefaultDirName={commonappdata}\obs-studio\plugins\{#MyAppName}
+DefaultGroupName={#MyAppName}
+OutputBaseFilename={#MyAppName}-{#MyAppVersion}-windows-x64-Installer
+Compression=lzma
+SolidCompression=yes
+DirExistsWarning=no
+SetupIconFile=@CMAKE_SOURCE_DIR@\assets\icons\alir-io.ico
+
+[Languages]
+Name: "english"; MessagesFile: "compiler:Default.isl"
+
+[Files]
+; Plugin DLL and debug symbols
+Source: "..\release\alir-io\bin\64bit\*"; DestDir: "{app}\bin\64bit"; Flags: ignoreversion
+; Plugin data (locale, etc.)
+Source: "..\release\alir-io\data\*"; DestDir: "{app}\data"; Flags: ignoreversion recursesubdirs createallsubdirs
+; License file (used by the license page only, not installed to disk)
+Source: "..\LICENSE"; Flags: dontcopy
+; Icon for the uninstaller
+Source: "@CMAKE_SOURCE_DIR@\assets\icons\alir-io.ico"; DestDir: "{app}"; Flags: ignoreversion
+[Icons]
+Name: "{group}\{cm:ProgramOnTheWeb,{#MyAppName}}"; Filename: "{#MyAppURL}"
+Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"; IconFilename: "{app}\alir-io.ico"
+
+[Code]
+procedure InitializeWizard();
+var
+  GPLText: AnsiString;
+  Page: TOutputMsgMemoWizardPage;
+begin
+  ExtractTemporaryFile('LICENSE');
+  LoadStringFromFile(ExpandConstant('{tmp}\LICENSE'), GPLText);
+  Page := CreateOutputMsgMemoPage(wpWelcome,
+    'License Information', 'Please review the license terms before installing {#MyAppName}',
+    'Press Page Down to see the rest of the agreement. Once you are aware of your rights, click Next to continue.',
+    String(GPLText)
+  );
+end;
+
+// Helper script to find the OBS installation path
+// credit where it's due :
+// following function comes from https://github.com/Xaymar/obs-studio_amf-encoder-plugin/blob/master/%23Resources/Installer.in.iss#L45
+// This is deprecated as it is not super reliable if portable installs are used. Replace with a more reliable method in the future.
+function GetOBSDirName(Value: String): String;
+var
+  InstallPath: String;
+begin
+  // initialize default path, which will be returned when the following registry
+  // key queries fail due to missing keys or for some different reason
+  Result := '{autopf}\obs-studio';
+  // query the first registry value; if this succeeds, return the obtained value
+  if RegQueryStringValue(HKLM32, 'SOFTWARE\OBS Studio', '', InstallPath) then
+    Result := InstallPath;
+end;

@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/res">
+        <file>images/alir-io.png</file>
+        <file>images/asiologo.png</file>
+        <file>images/supportme.png</file>
+    </qresource>
+</RCC>

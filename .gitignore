@@ -1,0 +1,54 @@
+# CMake & Build Artifacts
+build/
+build_*/
+out/
+release/
+/rundir/
+/CMakeCache.txt
+/CMakeFiles/
+/Makefile
+/cmake_install.cmake
+/install_manifest.txt
+/compile_commands.json
+/CTestTestfile.cmake
+/_deps/
+.deps/
+*.ninja
+*.ninja_deps
+*.ninja_log
+.cmake/
+
+# Exclude CMake build number cache
+/cmake/.CMakeBuildNumber
+
+# Visual Studio & VSCode
+.vscode/
+.vs/
+*.sln
+*.vcxproj
+*.vcxproj.user
+*.vcxproj.filters
+*.dir/
+
+# Binaries & Intermediate files
+*.dll
+*.exe
+*.pdb
+*.ilk
+*.obj
+*.lib
+*.exp
+*.o
+*.a
+*.so
+*.dylib
+
+# External user folder
+.external/
+
+# Ccache & Linting
+.ccache/
+.cache/
+
+# User-specific
+CMakeUserPresets.json
