@@ -14,20 +14,20 @@
 
 ---
 
-**alir.io** is a plugin for OBS Studio that bridges your ASIO audio interfaces with OBS Studio. 
+**alir.io** is a lightweight plugin designed to natively integrate professional ASIO hardware into OBS Studio for clean, multi-channel audio capture and direct monitoring.
 
 ### Features
 * **ASIO Input Source:** Capture direct audio from your ASIO interface into OBS.
-* **ASIO Output Filter:** Route specific audio sources from OBS straight to your ASIO hardware.
+* **ASIO Output Filter:** Dedicated direct monitoring. Route your ASIO input sources straight back to your ASIO hardware with near-zero latency.
 * **Multi-channel Support:** Works with Mono, Stereo, and complex surround setups (up to 7.1).
 * **Low Latency:** Relies on native ASIO drivers to keep audio delays to an absolute minimum.
 
 ----
 
 ### Installation
-**Windows**
+**Windows :**
 * **Installer (Recommended):** Just grab the latest `.exe` installer from the **[Releases](../../releases/latest)** page. Run it, restart OBS Studio, and you're done.
-* **Manual (.zip):** Download the `.zip` version, extract it, and drop the `data` and `obs-plugins` folders directly into your OBS Studio installation directory (usually `C:\Program Files\obs-studio`). Restart OBS.
+* **Manual (.zip):** Download the `*-Portable.zip` version, extract it, and drop the `data` and `obs-plugins` folders directly into your OBS Studio installation directory (usually `C:\Program Files\obs-studio`). Restart OBS.
 
 Once installed, you'll find the new ASIO options waiting for you in your Sources and Audio Filters menus.
 
@@ -37,7 +37,7 @@ Once installed, you'll find the new ASIO options waiting for you in your Sources
 
 Building the project is fully automated using **CMake Presets**. Dependencies (Qt6, OBS Studio SDK, ASIO SDK) are fetched automatically.
 
-**Prerequisites:**
+**Prerequisites :**
 - Visual Studio 2022 (with *Desktop development with C++* workload)
 - CMake 3.28+
 - [Inno Setup 6](https://jrsoftware.org/isinfo.php) (Only required for building the `.exe` installer)
