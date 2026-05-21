@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/images/alir-io-banner.png" alt="alir.io banner" width="600"/>
+  <img src="assets/images/alir-io-banner.png" alt="alir.io banner" width="1080"/>
 </div>
 
 ----
@@ -8,14 +8,13 @@
 
 [![License](https://img.shields.io/github/license/aprixlabs/alir-io)](https://github.com/aprixlabs/alir-io/blob/main/LICENSE)
 [![Latest Release](https://img.shields.io/github/v/release/aprixlabs/alir-io)](https://github.com/aprixlabs/alir-io/releases)
-[![Downloads](https://img.shields.io/github/downloads/aprixlabs/alir-io/total)](https://github.com/aprixlabs/alir-io/releases)
+[![Downloads](https://img.shields.io/github/downloads/aprixlabs/alir-io/total.svg?color=brightgreen&label=Downloads&v=1)](https://github.com/aprixlabs/alir-io/releases)
 
 </div>
 
-**alir.io** is an OBS Studio plugin that routes audio directly between your ASIO hardware and OBS.
-It bypasses the need for virtual audio cables or third-party workarounds, allowing you to capture multi-channel ASIO inputs and route OBS audio outputs with native, low-latency performance.
+---
 
-----
+**alir.io** is a plugin for OBS Studio that bridges your ASIO audio interfaces with OBS Studio. 
 
 ### Features
 * **ASIO Input Source:** Capture direct audio from your ASIO interface into OBS.
