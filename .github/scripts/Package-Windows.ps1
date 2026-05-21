@@ -62,7 +62,7 @@ function Package {
 
     $InstallDir = "${ProjectRoot}/release/${Configuration}/${ProductName}"
     $OutputDir  = "${ProjectRoot}/build_${Target}/Output"
-    $StagingDir = "${OutputDir}/${OutputName}"
+    $StagingDir = "${OutputDir}/_staging"
 
     # Ensure output folder exists
     if (-not (Test-Path $OutputDir)) { New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null }
@@ -88,9 +88,9 @@ function Package {
         Copy-Item -Path "${InstallDir}/data/*" -Destination $DataDest -Recurse -Force
     }
 
-    # Compress the staging folder
+    # Compress CONTENTS of staging (wildcard = no wrapping folder in zip root)
     $CompressArgs = @{
-        Path             = "${StagingDir}"
+        Path             = "${StagingDir}/*"
         CompressionLevel = 'Optimal'
         DestinationPath  = "${OutputDir}/${OutputName}.zip"
         Verbose          = ($Env:CI -ne $null)
