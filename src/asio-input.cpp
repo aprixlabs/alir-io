@@ -20,7 +20,6 @@
 #include "asio-manager.h"
 #include "asio-plugin.h"
 
-// --- Helpers ---
 static int get_max_obs_channels()
 {
 	static int channels = 0;
@@ -86,7 +85,7 @@ bool show_asio_about(obs_properties_t *props, obs_property_t *property, void *da
 
 	addCenteredText("<a href='https://github.com/aprixlabs/alir-io' style='text-decoration:none;'>"
 			"<img src=':/res/images/alir-io.png'></a><br>"
-			"<span style='font-size:9pt; color:#888888;'>Version 1.0.0</span><br>"
+			"<span style='font-size:9pt; color:#888888;'>Version 1.0.1</span><br>"
 			"<span style='font-size:10pt;'>ASIO\u00AE Integration for OBS Studio</span><br><br>"
 			"<span style='font-size:10pt;'>\u00A9 2026 "
 			"<a href='https://github.com/aprixlabs' style='text-decoration: none; color: white; "
@@ -159,8 +158,9 @@ public:
 	{
 		UNUSED_PARAMETER(props);
 		UNUSED_PARAMETER(property);
-		UNUSED_PARAMETER(data);
-		ASIOManager::getInstance().openControlPanel();
+		ASIOPlugin *self = static_cast<ASIOPlugin *>(data);
+		if (self && self->targetDriverName == ASIOManager::getInstance().getCurrentDriverName())
+			ASIOManager::getInstance().openControlPanel();
 		return true;
 	}
 
@@ -170,7 +170,7 @@ public:
 		std::string name = obs_data_get_string(settings, "device_id");
 
 		obs_property_list_clear(list);
-		obs_property_list_add_int(list, obs_module_text("Mute"), -1);
+		obs_property_list_add_int(list, obs_module_text("None"), -1);
 
 		auto channels = ASIOManager::getInstance().getInputChannels(name);
 		for (size_t i = 0; i < channels.size(); i++) {
@@ -197,8 +197,6 @@ public:
 			fill_out_channels_modified(props, r, settings);
 		}
 
-		// Only show latency if the driver saved in THIS source's settings
-		// is the same driver currently active in the singleton.
 		const char *dev_id      = obs_data_get_string(settings, "device_id");
 		std::string savedDriver = dev_id ? dev_id : "";
 
@@ -227,7 +225,6 @@ public:
 
 		obs_properties_add_button(props, "control_panel", obs_module_text("ControlPanel"), open_control_panel);
 
-		// Show latency only if this source's saved driver matches the active driver
 		{
 			ASIOPlugin     *self        = static_cast<ASIOPlugin *>(vptr);
 			std::string     savedDriver = self ? self->targetDriverName : "";

@@ -45,6 +45,7 @@ private:
 	obs_source_t      *source;
 	std::vector<short> _route;
 	speaker_layout     _outLayout = SPEAKERS_STEREO;
+	std::atomic<bool>  lastPlayingState{false};
 
 public:
 	ASIOOutputFilter(obs_data_t *settings, obs_source_t *source) : source(source)
@@ -90,7 +91,11 @@ public:
 
 	struct obs_audio_data *filter_audio(struct obs_audio_data *audio)
 	{
-		if (!ASIOManager::getInstance().isPlaying())
+		bool nowPlaying = ASIOManager::getInstance().isPlaying();
+		if (nowPlaying != lastPlayingState.exchange(nowPlaying))
+			obs_source_update_properties(source);
+
+		if (!nowPlaying)
 			return audio;
 
 		int  out_channels = get_audio_channels(_outLayout);
@@ -125,7 +130,7 @@ public:
 	static bool fill_asio_out_channels(obs_property_t *list, speaker_layout layout)
 	{
 		obs_property_list_clear(list);
-		obs_property_list_add_int(list, obs_module_text("Mute"), -1);
+		obs_property_list_add_int(list, obs_module_text("None"), -1);
 
 		std::string currentDriver = ASIOManager::getInstance().getCurrentDriverName();
 		auto        channels      = ASIOManager::getInstance().getOutputChannels(currentDriver);

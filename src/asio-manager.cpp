@@ -121,7 +121,9 @@ ASIOManager::ASIOManager()
 	if (!asioDriverList)
 		asioDriverList = new AsioDriverList();
 	for (int i = 0; i < MAX_ASIO_CHANNELS; i++)
-		circlebuf_init(&outBuffers[i]);
+		deque_init(&outBuffers[i]);
+	watchdogRunning.store(true);
+	watchdogThread = std::thread(&ASIOManager::watchdogLoop, this);
 }
 
 ASIOManager::~ASIOManager()
@@ -131,6 +133,10 @@ ASIOManager::~ASIOManager()
 
 void ASIOManager::shutdown()
 {
+	watchdogRunning.store(false);
+	if (watchdogThread.joinable())
+		watchdogThread.join();
+
 	if (isOpen) {
 		if (isPlayingState)
 			ASIOStop();
@@ -144,7 +150,7 @@ void ASIOManager::shutdown()
 		driverRefCounter    = 0;
 	}
 	for (int i = 0; i < MAX_ASIO_CHANNELS; i++)
-		circlebuf_free(&outBuffers[i]);
+		deque_free(&outBuffers[i]);
 	if (asioDriverList) {
 		delete asioDriverList;
 		asioDriverList = nullptr;
@@ -161,6 +167,11 @@ void ASIOManager::ensureDriverLoaded(const std::string& driverName)
 		return;
 	}
 	if (isOpen) {
+		if (driverRefCounter > 0) {
+			blog(LOG_WARNING, "Cannot load '%s': '%s' still held by %d source(s).",
+			     driverName.c_str(), currentDriverName.c_str(), driverRefCounter);
+			return;
+		}
 		shuttingDown.store(true);
 		if (isPlayingState)
 			ASIOStop();
@@ -240,7 +251,7 @@ void ASIOManager::ensureDriverLoaded(const std::string& driverName)
 					std::lock_guard<std::mutex> lock(outMutex);
 					for (long i = 0; i < outputChannels; i++) {
 						floatOutputBuffers[i].resize(preferredSize, 0.0f);
-						circlebuf_pop_front(&outBuffers[i], nullptr, outBuffers[i].size);
+						deque_pop_front(&outBuffers[i], nullptr, outBuffers[i].size);
 					}
 				}
 
@@ -315,6 +326,61 @@ void ASIOManager::forceReset()
 	} else {
 		blog(LOG_ERROR, "Driver failed to reload after reset!");
 	}
+}
+
+void ASIOManager::watchdogLoop()
+{
+	CoInitialize(nullptr);
+
+	while (watchdogRunning.load()) {
+		for (int i = 0; i < 10 && watchdogRunning.load(); i++)
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+		if (!watchdogRunning.load() || !isPlayingState || lastBufferSwitchNs.load() == 0)
+			continue;
+
+		constexpr uint64_t STALL_NS = 3'000'000'000ULL;
+		if (os_gettime_ns() - lastBufferSwitchNs.load() < STALL_NS)
+			continue;
+
+		std::string driverName    = currentDriverName;
+		int         savedRefCount = driverRefCounter;
+		if (driverName.empty())
+			continue;
+
+		blog(LOG_WARNING, "ASIO stall detected for '%s'. Reconnecting...", driverName.c_str());
+
+		shuttingDown.store(true);
+		if (isPlayingState)
+			ASIOStop();
+		std::this_thread::sleep_for(std::chrono::milliseconds(50));
+		ASIODisposeBuffers();
+		ASIOExit();
+		if (asioDrivers)
+			asioDrivers->removeCurrentDriver();
+		isOpen              = false;
+		isPlayingState      = false;
+		supportsOutputReady = false;
+		driverRefCounter    = 0;
+		currentDriverName   = "";
+		shuttingDown.store(false);
+		lastBufferSwitchNs.store(0);
+
+		while (watchdogRunning.load()) {
+			ensureDriverLoaded(driverName);
+			if (isOpen) {
+				driverRefCounter = savedRefCount;
+				lastBufferSwitchNs.store(os_gettime_ns());
+				blog(LOG_INFO, "ASIO reconnected: '%s'", driverName.c_str());
+				break;
+			}
+			blog(LOG_INFO, "ASIO reconnect failed for '%s', retrying...", driverName.c_str());
+			for (int i = 0; i < 30 && watchdogRunning.load(); i++)
+				std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		}
+	}
+
+	CoUninitialize();
 }
 
 void ASIOManager::fillDeviceList(obs_property_t* prop)
@@ -396,9 +462,9 @@ void ASIOManager::pushOutputAudio(
 
 	for (long ch = 0; ch < outputChannels; ch++) {
 		if (mappedData[ch] != nullptr)
-			circlebuf_push_back(&outBuffers[ch], mappedData[ch], frames * sizeof(float));
+			deque_push_back(&outBuffers[ch], mappedData[ch], frames * sizeof(float));
 		else
-			circlebuf_push_back(&outBuffers[ch], silence.data(), frames * sizeof(float));
+			deque_push_back(&outBuffers[ch], silence.data(), frames * sizeof(float));
 	}
 }
 
@@ -415,7 +481,6 @@ long ASIOManager::getOutputChannelsCount() const
 	return outputChannels;
 }
 
-// --- ASIO Callbacks ---
 void ASIOManager::bufferSwitch(long index, ASIOBool processNow)
 {
 	ASIOManager& mgr = ASIOManager::getInstance();
@@ -424,6 +489,7 @@ void ASIOManager::bufferSwitch(long index, ASIOBool processNow)
 		return;
 
 	uint64_t ts = os_gettime_ns();
+	mgr.lastBufferSwitchNs.store(ts, std::memory_order_relaxed);
 
 	for (long ch = 0; ch < mgr.inputChannels; ch++) {
 		void*          src            = mgr.bufferInfos[ch].buffers[index];
@@ -456,15 +522,15 @@ void ASIOManager::bufferSwitch(long index, ASIOBool processNow)
 
 		size_t max_buffer = (size_t)(mgr.sampleRate * sizeof(float) / 10);
 		if (available > max_buffer) {
-			circlebuf_pop_front(&mgr.outBuffers[ch], nullptr, available - max_buffer);
+			deque_pop_front(&mgr.outBuffers[ch], nullptr, available - max_buffer);
 			available = max_buffer;
 		}
 
 		if (available >= bytesNeeded) {
-			circlebuf_pop_front(&mgr.outBuffers[ch], tempFloat, bytesNeeded);
+			deque_pop_front(&mgr.outBuffers[ch], tempFloat, bytesNeeded);
 		} else {
 			if (available > 0)
-				circlebuf_pop_front(&mgr.outBuffers[ch], tempFloat, available);
+				deque_pop_front(&mgr.outBuffers[ch], tempFloat, available);
 			memset((uint8_t*)tempFloat + available, 0, bytesNeeded - available);
 		}
 

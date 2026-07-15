@@ -107,6 +107,9 @@ inline std::string get_hw_status_string(const std::string &savedDriver = "", boo
 	std::string  active  = mgr.getCurrentDriverName();
 	bool         playing = mgr.isPlaying();
 
+	if (requireDriverMatch && savedDriver.empty())
+		return obs_module_text("Status.NoDriver");
+
 	bool show;
 	if (requireDriverMatch) {
 		show = playing && !savedDriver.empty() && (savedDriver == active);
@@ -120,8 +123,12 @@ inline std::string get_hw_status_string(const std::string &savedDriver = "", boo
 	long  inLat  = mgr.getInputLatency();
 	long  outLat = mgr.getOutputLatency();
 	long  sr     = mgr.getSampleRate();
-	float inMs   = (sr > 0) ? ((float)inLat / sr) * 1000.0f : 0.0f;
-	float outMs  = (sr > 0) ? ((float)outLat / sr) * 1000.0f : 0.0f;
+
+	if (inLat == 0 && outLat == 0)
+		return obs_module_text("Status.NotRunning");
+
+	float inMs  = (sr > 0) ? ((float)inLat / sr) * 1000.0f : 0.0f;
+	float outMs = (sr > 0) ? ((float)outLat / sr) * 1000.0f : 0.0f;
 
 	char buf[512];
 	snprintf(buf, sizeof(buf),

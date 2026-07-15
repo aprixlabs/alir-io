@@ -9,13 +9,14 @@
 #include <string>
 #include <vector>
 #include <mutex>
-#include <util/circlebuf.h>
+#include <atomic>
+#include <thread>
+#include <util/deque.h>
 #include <obs.h>
 #include "asio.h"
 
 #define MAX_ASIO_CHANNELS 64
 
-// Interface for ASIO Input Plugins
 class ASIOClient {
 public:
 	virtual void pushAudio(const std::vector<std::vector<float>>& buffers, uint64_t timestamp, uint32_t sample_rate,
@@ -27,26 +28,21 @@ class ASIOManager {
 public:
 	static ASIOManager& getInstance();
 
-	// Driver control
 	void ensureDriverLoaded(const std::string& driverName);
 	void releaseDriver(const std::string& driverName);
 	void forceReset();
 
-	// UI Helpers
 	void                     fillDeviceList(obs_property_t* prop);
 	std::vector<std::string> getInputChannels(const std::string& driverName);
 	std::vector<std::string> getOutputChannels(const std::string& driverName);
 	void                     openControlPanel();
 
-	// Client Registration
 	void addClient(ASIOClient* client);
 	void removeClient(ASIOClient* client);
 
-	// Audio Output Buffer Push
 	void pushOutputAudio(
 			const std::vector<int>& asioChannels, const std::vector<const float*>& data, size_t frames);
 
-	// Check state
 	bool        isPlaying() const;
 	std::string getCurrentDriverName() const;
 	long        getOutputChannelsCount() const;
@@ -55,26 +51,27 @@ public:
 	long getOutputLatency() const;
 	long getSampleRate() const;
 
-	// Called by Module Unload
 	void shutdown();
 
 private:
 	ASIOManager();
 	~ASIOManager();
 
-	// Internal ASIO callbacks
 	static void      bufferSwitch(long index, ASIOBool processNow);
 	static ASIOTime* bufferSwitchTimeInfo(ASIOTime* timeInfo, long index, ASIOBool processNow);
 	static void      sampleRateChanged(ASIOSampleRate sRate);
 	static long      asioMessages(long selector, long value, void* message, double* opt);
+	void             watchdogLoop();
 
-	// State variables
 	bool              isOpen              = false;
 	bool              isPlayingState      = false;
 	bool              supportsOutputReady = false;
 	std::string       currentDriverName;
 	int               driverRefCounter = 0;
-	std::atomic<bool> shuttingDown{false};
+	std::atomic<bool>     shuttingDown{false};
+	std::atomic<uint64_t> lastBufferSwitchNs{0};
+	std::atomic<bool>     watchdogRunning{false};
+	std::thread           watchdogThread;
 
 	ASIODriverInfo driverInfo;
 	long           inputChannels  = 0;
@@ -92,5 +89,5 @@ private:
 	std::vector<ASIOClient*> clients;
 
 	std::mutex outMutex;
-	circlebuf  outBuffers[MAX_ASIO_CHANNELS];
+	struct deque outBuffers[MAX_ASIO_CHANNELS];
 };

@@ -52,12 +52,6 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 # Define compiler definitions needed for ASIOSDK
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE IEEE754_64FLOAT=1 _MBCS)
 
-# Suppress deprecation warnings (e.g., circlebuf functions deprecated in OBS 31)
-if(MSVC)
-  target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE /wd4996)
-else()
-  target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE -Wno-deprecated-declarations)
-endif()
 
 # Undefine UNICODE for specific ASIOSDK files without modifying their source code
 # Also disable strict string checking and size_t conversion warnings since the ASIO SDK codebase is old.
